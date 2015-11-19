@@ -1,8 +1,8 @@
 <link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/classes/iron-flex-layout.html">
 <link rel="import" href="../iron-icon/iron-icon.html">
 <link rel="import" href="../iron-icons/iron-icons.html">
 <link rel="import" href="../iron-input/iron-input.html">
-<link rel="import" href="../iron-selector/iron-selector.html">
 <link rel="import" href="../neon-animation/neon-animation.html">
 <link rel="import" href="../paper-input/paper-input-container.html">
 <link rel="import" href="../paper-item/paper-item.html">
@@ -12,143 +12,175 @@
 <dom-module id="paper-dropdown-select">
 
   <style>
-    :host ::content #dropdown {
-      max-height: var(--paper-dropdown-height, 200px);
-      overflow-y: scroll;
+    :host {
+      display: block;
+      position: relative;
+    }
+    #dropdown {
       position: absolute;
       background-color: var(--paper-dropdown-color, white);
       z-index: 1;
       display: none;
+      white-space: nowrap;
 
       @apply(--shadow-elevation-2dp);
     }
 
+    #dropdown ::content paper-item {
+      @apply(--paper-dropdown-select-items);
+      cursor: pointer;
+    }
+
     #dropdown-icon {
-      position: absolute;
-      right: 0;
+      cursor: pointer;
     }
 
-    .iron-selected {
-      font-weight: bold;
-    }
-
-    paper-item:hover {
-     background-color: var(--paper-dropdown-highlight-color, #be46bd);
+    #dropdown ::content paper-item:hover {
+      background-color: var(--paper-dropdown-highlight-color, #EBF0F3);
     }
   </style>
 
   <template>
-    <paper-input-container on-click="_dropdownAction" disabled$="[[disabled]]">
-      <label>[[label]]</label>
-      <input is="iron-input" type="text" bind-value="{{selectedOption.label}}" disabled />
-      <iron-icon id="dropdown-icon" icon="[[_dropdownIcon()]]"></iron-icon>
-    </paper-input-container>
-    <iron-selector id="dropdown" attrForSelected="value">
-      <template is="dom-repeat" items="{{options}}">
-        <paper-item on-click="_hideDropdown" value="{{item.value}}">
-          <span>{{item.label}}</span>
-        </paper-item>
-      </template>
-    </iron-selector>
-    <input type="hidden" name="[[name]]" value="[[selectedOption.value]]" />
-
+    <div class="horizontal center layout" on-click="_dropdownAction">
+      <span hidden$="{{!label}}">{{label}}</span>
+      <content select=":not(.dropdown)"></content>
+      <iron-icon id="dropdown-icon" icon="[[_dropdownIcon(opened, icon)]]" src=[[src]] hidden$="{{hideIcon}}"></iron-icon>
+    </div>
+    <div id="dropdown" on-click="_dropdownAction">
+      <content select=".dropdown"></content>
+    </div>
   </template>
 
 </dom-module>
 
 <script>
 
-(function() {
+  (function() {
 
-  Polymer({
+    Polymer({
 
-    is: 'paper-dropdown-select',
+      is: 'paper-dropdown-select',
 
-    behaviors: [
-      Polymer.IronSelectableBehavior,
-      Polymer.NeonAnimationRunnerBehavior
-    ],
+      behaviors: [
+        Polymer.NeonAnimationRunnerBehavior
+      ],
 
-    properties: {
-      disabled: {
-        type: Boolean,
-        default: false,
-        reflectToAttribute: true
-      },
+      properties: {
 
-      options: Object,
-      name: String,
-      selectedOption: Object,
+        autoDisabled: {
+          type: Boolean,
+          value: false
+        },
 
-      _open: {
-        type: Boolean,
-        default: false
-      },
+        opened: {
+          type: Boolean,
+          value: false,
+          notify: true
+        },
 
+        label: {
+          type: String,
+          value: null
+        },
 
-      animationConfig: {
-        type: Object,
-        value: function() {
-          return {
-            'open': [{
-              name: 'scale-up-animation',
-              node: this.$$('#dropdown'),
-              transformOrigin: '0 0'
-            }],
-            'close': [{
-              'name': 'scale-down-animation',
-              node: this.$$('#dropdown'),
-              transformOrigin: '0 0'
-            }]
+        icon: {
+          type: String,
+          value: null
+        },
+
+        src: {
+          type: String,
+          value: ''
+        },
+
+        hideIcon: {
+          type: Boolean,
+          value: false
+        },
+
+        animationOrigin: {
+          type: String,
+          value: '0 0'
+        },
+
+        animationConfig: {
+          type: Object,
+          value: function() {
+            return {
+              open: [{
+                name: 'scale-up-animation',
+                node: this.$$('#dropdown'),
+                transformOrigin: '0 0'
+              }],
+              close: [{
+                name: 'scale-down-animation',
+                node: this.$$('#dropdown'),
+                transformOrigin: '0 0'
+              }]
+            }
           }
         }
-      }
-    },
 
-    listeners: {
-      'tap': '_updateSelected',
-      'neon-animation-finish': '_displayNone'
-    },
+      },
 
-    _displayNone: function() {
-      if (!this.open) {
-        this.$$('#dropdown').style.display = 'none';
-      }
-    },
+      listeners: {
+        'neon-animation-finish': '_displayNone'
+      },
 
-    _dropdownIcon: function() {
-      if(this._open) {
-        return 'arrow-drop-up';
-      } else {
-        return 'arrow-drop-down';
-      }
-    },
+      open: function() {
+        this._open();
+      },
 
-    _dropdownAction: function(e) {
-      if(this.open) {
-        this.open = false;
-        this.playAnimation('close');
-      } else {
-        this.open = true;
+      close: function() {
+        this._close();
+      },
+
+      _displayNone: function() {
+        if (!this.opened) {
+          this.$$('#dropdown').style.display = 'none';
+        }
+      },
+
+      _dropdownIcon: function(isOpen, icon) {
+        if (icon) {
+          return icon;
+        } else if(isOpen) {
+          return 'arrow-drop-up';
+        } else {
+          return 'arrow-drop-down';
+        }
+      },
+
+      _open: function() {
+        if (this.opened) { return; }
+        this.opened = true;
+        this.animationConfig.open[0].transformOrigin = this.animationOrigin;
         this.$$('#dropdown').style.display = 'block';
         this.playAnimation('open');
+      },
+
+      _close: function() {
+        if (!this.opened) { return; }
+        this.opened = false;
+        this.animationConfig.close[0].transformOrigin = this.animationOrigin;
+        this.playAnimation('close');
+      },
+
+      _dropdownAction: function(e) {
+        if (this.autoDisabled) { return; }
+        if (this.opened) {
+          this._close();
+        } else {
+          this._open();
+        }
+      },
+
+      _hideDropdown : function() {
+        this.opened = false;
+        this.playAnimation('close');
       }
-    },
+    });
 
-    _hideDropdown : function() {
-      this.open = false;
-      this.playAnimation('close');
-    },
-
-    _updateSelected: function() {
-      var dd = this.$$('#dropdown');
-      if (dd.selected !== undefined) {
-        this.selectedOption = this.options[dd.selected];
-      }
-    }
-
-  });
-
-})();
+  })();
 
 </script>
